@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HACK.MCE 5.0 - Admin Panel</title>
+    <link rel="icon" type="image/svg+xml" href="./assests/favicon.svg" />
+    <link href="./output.css" rel="stylesheet">
+    <link rel="stylesheet" href="./admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <canvas id="bg-canvas"></canvas>
+    <div class="aurora-background"></div>
+    <div class="grid-pattern"></div>
+    <div class="bg-animation"></div>
+
+    <header>
+        <h1 class="logo">HACK.MCE 5.0 - ADMIN</h1>
+        
+        <!-- Logo -->
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-20">
+                <div class="flex-1 md:w-1/3 flex justify-center">
+                    <a href="#" class="relative h-16 md:h-20 w-32">
+                        <img src="./assests/dot-logo.png" alt="Dot Logo"
+                            class="logo-bottom absolute inset-0 h-full w-full object-contain opacity-0 transition-opacity duration-1000 ease-in-out">
+                        <img src="./assests/logo.gif" alt="HACK.MCE 5.0 Logo"
+                            class="logo-top absolute inset-0 h-full w-full object-contain opacity-100 transition-opacity duration-1000 ease-in-out">
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Admin Navigation Buttons -->
+        <div class="header-right">
+            <a href="index.html" class="nav-btn">← Registration</a>
+            <button class="refresh-btn" onclick="loadAllData()">🔄 Refresh</button>
+            <button class="export-btn" onclick="exportToExcel()">📥 Export</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-card-title">Total Teams</div>
+                <div class="stat-card-value" id="totalTeams">0</div>
+                <div class="stat-card-subtitle">Selected for hackathon</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-title">Checked In</div>
+                <div class="stat-card-value" id="checkedInCount">0</div>
+                <div class="stat-card-subtitle">Teams present</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-title">Pending</div>
+                <div class="stat-card-value" id="pendingCount">0</div>
+                <div class="stat-card-subtitle">Yet to arrive</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-title">Attendance Rate</div>
+                <div class="stat-card-value" id="attendanceRate">0%</div>
+                <div class="stat-card-subtitle">Overall percentage</div>
+            </div>
+        </div>
+
+        <!-- Manual Check-in Section -->
+        <div class="action-section">
+            <h2 class="section-title">Manual Check-in</h2>
+            <form class="action-form" id="manualCheckInForm">
+                <input 
+                    type="text" 
+                    id="manualTeamId" 
+                    placeholder="Enter Team ID" 
+                    required
+                >
+                <button type="submit">Check In Team</button>
+            </form>
+            <div id="manualMessage" class="message"></div>
+        </div>
+
+        <!-- Teams List Section -->
+        <div class="teams-section">
+            <h2 class="section-title">All Teams</h2>
+            
+            <!-- Search Bar -->
+            <div class="search-bar">
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    placeholder="🔍 Search by Team ID or Team Name..."
+                    oninput="filterTeams()"
+                >
+            </div>
+
+            <!-- Teams Table -->
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Team ID</th>
+                            <th>Team Name</th>
+                            <th>Members</th>
+                            <th>Status</th>
+                            <th>Check-in Time</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="teamsTableBody">
+                        <tr>
+                            <td colspan="7" class="loading">
+                                <div class="spinner"></div>
+                                Loading teams...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>
