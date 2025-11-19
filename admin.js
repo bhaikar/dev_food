@@ -1,5 +1,7 @@
-// API Base URL - Update this with your backend URL
-const API_BASE_URL = 'https://dev-hack.onrender.com/api';
+// API Base URL - Automatically detect environment (local or deployed)
+const API_BASE_URL = window.location.hostname === "localhost"
+    ? "http://localhost:3000/api"
+    : "/api";
 
 let allTeams = [];
 
@@ -8,7 +10,7 @@ window.addEventListener('load', () => {
     loadAllData();
 });
 
-// Load all data (stats + teams)
+// Load all data
 async function loadAllData() {
     await loadStats();
     await loadTeams();
@@ -17,18 +19,24 @@ async function loadAllData() {
 // Load statistics
 async function loadStats() {
     try {
-        const response = await fetch(`${API_BASE_URL}/admin/stats`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
+        const response = await fetch(`${API_BASE_URL}/food/admin/stats`, {
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        
         const data = await response.json();
 
         if (response.ok && data.success) {
-            document.getElementById('totalTeams').textContent = data.stats.total;
-            document.getElementById('checkedInCount').textContent = data.stats.checkedIn;
-            document.getElementById('pendingCount').textContent = data.stats.pending;
-            
-            const rate = data.stats.total > 0 
-                ? Math.round((data.stats.checkedIn / data.stats.total) * 100)
-                : 0;
-            document.getElementById('attendanceRate').textContent = rate + '%';
+            document.getElementById('totalParticipants').textContent = data.stats.total;
+            document.getElementById('breakfastClaimed').textContent = data.stats.breakfast.claimed;
+            document.getElementById('breakfastPercent').textContent = data.stats.breakfast.percentage + '%';
+            document.getElementById('lunchClaimed').textContent = data.stats.lunch.claimed;
+            document.getElementById('lunchPercent').textContent = data.stats.lunch.percentage + '%';
+            document.getElementById('dinnerClaimed').textContent = data.stats.dinner.claimed;
+            document.getElementById('dinnerPercent').textContent = data.stats.dinner.percentage + '%';
         }
     } catch (error) {
         console.error('Error loading stats:', error);
@@ -37,72 +45,101 @@ async function loadStats() {
 
 // Load all teams
 async function loadTeams() {
+    const container = document.getElementById('teamsContainer');
+    
     try {
-        const response = await fetch(`${API_BASE_URL}/admin/all-teams`);
+        console.log('Fetching teams from:', `${API_BASE_URL}/food/admin/all-participants`);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
+        const response = await fetch(`${API_BASE_URL}/food/admin/all-participants`, {
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        
+        console.log('Response status:', response.status, 'ok:', response.ok);
+        
         const data = await response.json();
+        console.log('Response data:', data);
 
-        if (response.ok && data.success) {
+        if (response.ok && data.success && data.teams) {
+            console.log('Successfully loaded teams:', data.teams.length);
             allTeams = data.teams;
             renderTeams(allTeams);
+        } else {
+            const errorMsg = data.message || 'Failed to load teams';
+            console.error('API error:', errorMsg);
+            container.innerHTML = `
+                <div class="loading">
+                    <p style="color: #dc2626;">Error: ${errorMsg}. Please refresh.</p>
+                </div>
+            `;
         }
     } catch (error) {
         console.error('Error loading teams:', error);
-        document.getElementById('teamsTableBody').innerHTML = `
-            <tr><td colspan="7" style="text-align: center; color: #dc2626;">
-                Error loading teams. Please refresh.
-            </td></tr>
+        const errorMsg = error.name === 'AbortError' ? 'Request timeout' : error.message;
+        container.innerHTML = `
+            <div class="loading">
+                <p style="color: #dc2626;">Error loading teams: ${errorMsg}. Please refresh.</p>
+            </div>
         `;
     }
 }
 
-// Render teams table
+// Render teams
 function renderTeams(teams) {
-    const tbody = document.getElementById('teamsTableBody');
+    const container = document.getElementById('teamsContainer');
     
     if (teams.length === 0) {
-        tbody.innerHTML = `
-            <tr><td colspan="7" style="text-align: center; color: #888;">
-                No teams found
-            </td></tr>
-        `;
+        container.innerHTML = '<div class="loading"><p>No teams found</p></div>';
         return;
     }
 
-    tbody.innerHTML = teams.map((team, index) => {
-        // Ensure isCheckedIn is a boolean
-        const checkedIn = team.isCheckedIn === true || team.isCheckedIn === 'true';
-        
-        // Format members list (vertical)
-        let membersList = '-';
-        if (team.members && team.members.length > 0) {
-            membersList = team.members.map((member, idx) => 
-                `<div class="member-item">${idx + 1}. ${member}</div>`
-            ).join('');
-        }
-        
-        return `
-        <tr>
-            <td>${index + 1}</td>
-            <td>${team.teamId}</td>
-            <td>${team.teamName}</td>
-            <td class="members-cell">${membersList}</td>
-            <td>
-                <span class="status-badge ${checkedIn ? 'status-checked-in' : 'status-pending'}">
-                    ${checkedIn ? '✓ Checked In' : '⏳ Pending'}
-                </span>
-            </td>
-            <td>${team.checkInTime ? new Date(team.checkInTime).toLocaleString() : '-'}</td>
-            <td>
-                ${checkedIn
-                    ? `<button class="action-btn undo" onclick="undoCheckIn('${team.teamId}')">Undo</button>`
-                    : `<button class="action-btn" onclick="manualCheckIn('${team.teamId}')">Check In</button>`
-                }
-            </td>
-        </tr>
-    `}).join('');
+    container.innerHTML = teams.map(team => `
+        <div class="team-card" onclick="toggleTeam(this)">
+            <div class="team-header">
+                <div class="team-info">
+                    <h3>${team.teamId} - ${team.teamName}</h3>
+                    <p>${team.members.length} members</p>
+                </div>
+                <div class="team-toggle">▼</div>
+            </div>
+            <div class="team-members">
+                ${team.members.map(member => `
+                    <div class="member-row">
+                        <div>
+                            <div class="member-name">${member.memberName}</div>
+                            <div class="member-id">${member.participantId}</div>
+                        </div>
+                        <div></div>
+                        <div class="meal-status ${member.meals.breakfast.claimed ? 'claimed' : 'pending'}">
+                            ${member.meals.breakfast.claimed ? '✓' : '-'}
+                        </div>
+                        <div class="meal-status ${member.meals.lunch.claimed ? 'claimed' : 'pending'}">
+                            ${member.meals.lunch.claimed ? '✓' : '-'}
+                        </div>
+                        <div class="meal-status ${member.meals.dinner.claimed ? 'claimed' : 'pending'}">
+                            ${member.meals.dinner.claimed ? '✓' : '-'}
+                        </div>
+                        <div class="member-actions">
+                            <button onclick="event.stopPropagation(); showUnclaimOptions('${member.participantId}', ${JSON.stringify(member.meals).replace(/"/g, '&quot;')})">
+                                Manage
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `).join('');
 }
 
-// Filter teams based on search
+// Toggle team card
+function toggleTeam(card) {
+    card.classList.toggle('expanded');
+}
+
+// Filter teams
 function filterTeams() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     const filtered = allTeams.filter(team => 
@@ -112,54 +149,85 @@ function filterTeams() {
     renderTeams(filtered);
 }
 
-// Manual check-in form
-document.getElementById('manualCheckInForm').addEventListener('submit', async (e) => {
+// Manual claim form
+document.getElementById('manualClaimForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const teamId = document.getElementById('manualTeamId').value.trim().toUpperCase();
-    await manualCheckIn(teamId);
-    document.getElementById('manualTeamId').value = '';
+    
+    const participantId = document.getElementById('manualParticipantId').value.trim().toUpperCase();
+    const mealType = document.getElementById('manualMealType').value;
+    
+    if (!participantId || !mealType) {
+        showManualMessage('Please fill all fields', 'error');
+        return;
+    }
+    
+    await manualClaim(participantId, mealType);
 });
 
-// Manual check-in function
-async function manualCheckIn(teamId) {
+// Manual claim function
+async function manualClaim(participantId, mealType) {
     try {
-        const response = await fetch(`${API_BASE_URL}/admin/manual-checkin`, {
+        const response = await fetch(`${API_BASE_URL}/food/admin/manual-claim`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ teamId })
+            body: JSON.stringify({ participantId, mealType })
         });
 
         const data = await response.json();
 
         if (response.ok && data.success) {
-            showMessage('manualMessage', 'Team checked in successfully!', 'success');
+            showManualMessage('Meal claimed successfully!', 'success');
+            document.getElementById('manualParticipantId').value = '';
+            document.getElementById('manualMealType').value = '';
             await loadAllData();
         } else {
-            showMessage('manualMessage', data.message || 'Check-in failed', 'error');
+            showManualMessage(data.message || 'Claim failed', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        showMessage('manualMessage', 'Network error', 'error');
+        showManualMessage('Network error', 'error');
     }
 }
 
-// Undo check-in
-async function undoCheckIn(teamId) {
-    if (!confirm(`Are you sure you want to undo check-in for ${teamId}?`)) {
+// Show unclaim options
+function showUnclaimOptions(participantId, meals) {
+    const claimedMeals = [];
+    if (meals.breakfast.claimed) claimedMeals.push('breakfast');
+    if (meals.lunch.claimed) claimedMeals.push('lunch');
+    if (meals.dinner.claimed) claimedMeals.push('dinner');
+
+    if (claimedMeals.length === 0) {
+        alert('No meals claimed yet for this participant');
+        return;
+    }
+
+    const mealType = prompt(`Unclaim which meal for ${participantId}?\nClaimed meals: ${claimedMeals.join(', ')}\n\nEnter meal type (breakfast/lunch/dinner):`);
+    
+    if (mealType && claimedMeals.includes(mealType.toLowerCase())) {
+        unclaimMeal(participantId, mealType.toLowerCase());
+    }
+}
+
+// Unclaim meal
+async function unclaimMeal(participantId, mealType) {
+    if (!confirm(`Are you sure you want to unclaim ${mealType} for ${participantId}?`)) {
         return;
     }
 
     try {
-        const response = await fetch(`${API_BASE_URL}/admin/undo-checkin/${teamId}`, {
-            method: 'DELETE'
+        const response = await fetch(`${API_BASE_URL}/food/admin/unclaim`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ participantId, mealType })
         });
 
         const data = await response.json();
 
         if (response.ok && data.success) {
+            alert('Meal unclaimed successfully');
             await loadAllData();
         } else {
-            alert(data.message || 'Failed to undo check-in');
+            alert(data.message || 'Failed to unclaim');
         }
     } catch (error) {
         console.error('Error:', error);
@@ -170,11 +238,11 @@ async function undoCheckIn(teamId) {
 // Export to Excel
 async function exportToExcel() {
     try {
-        const response = await fetch(`${API_BASE_URL}/admin/export`);
+        const response = await fetch(`${API_BASE_URL}/food/admin/export`);
         
         if (!response.ok) {
             const data = await response.json();
-            alert(data.message || 'Failed to export data');
+            alert(data.message || 'Failed to export');
             return;
         }
         
@@ -183,7 +251,7 @@ async function exportToExcel() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `HACK_MCE_5.0_CheckedIn_${new Date().toISOString().split('T')[0]}.xlsx`;
+        a.download = `HACK_MCE_5.0_Food_${new Date().toISOString().split('T')[0]}.xlsx`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -194,9 +262,9 @@ async function exportToExcel() {
     }
 }
 
-// Show message
-function showMessage(elementId, text, type) {
-    const messageBox = document.getElementById(elementId);
+// Show manual message
+function showManualMessage(text, type) {
+    const messageBox = document.getElementById('manualMessage');
     messageBox.textContent = text;
     messageBox.className = `message ${type}`;
     messageBox.style.display = 'block';

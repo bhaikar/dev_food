@@ -17,9 +17,8 @@
     <div class="bg-animation"></div>
 
     <header>
-        <h1 class="logo">HACK.MCE 5.0 - ADMIN</h1>
+        <h1 class="logo">HACK.MCE 5.0 - FOOD ADMIN</h1>
         
-        <!-- Logo -->
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-20">
                 <div class="flex-1 md:w-1/3 flex justify-center">
@@ -33,7 +32,6 @@
             </div>
         </div>
         
-        <!-- Admin Navigation Buttons -->
         <div class="header-right">
             <a href="index.html" class="nav-btn">← Registration</a>
             <button class="refresh-btn" onclick="loadAllData()">🔄 Refresh</button>
@@ -45,45 +43,51 @@
         <!-- Stats Grid -->
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-card-title">Total Teams</div>
-                <div class="stat-card-value" id="totalTeams">0</div>
-                <div class="stat-card-subtitle">Selected for hackathon</div>
+                <div class="stat-card-title">Total Participants</div>
+                <div class="stat-card-value" id="totalParticipants">0</div>
+                <div class="stat-card-subtitle">Registered members</div>
             </div>
             <div class="stat-card">
-                <div class="stat-card-title">Checked In</div>
-                <div class="stat-card-value" id="checkedInCount">0</div>
-                <div class="stat-card-subtitle">Teams present</div>
+                <div class="stat-card-title">🌅 Breakfast</div>
+                <div class="stat-card-value" id="breakfastClaimed">0</div>
+                <div class="stat-card-subtitle"><span id="breakfastPercent">0%</span> claimed</div>
             </div>
             <div class="stat-card">
-                <div class="stat-card-title">Pending</div>
-                <div class="stat-card-value" id="pendingCount">0</div>
-                <div class="stat-card-subtitle">Yet to arrive</div>
+                <div class="stat-card-title">🍽️ Lunch</div>
+                <div class="stat-card-value" id="lunchClaimed">0</div>
+                <div class="stat-card-subtitle"><span id="lunchPercent">0%</span> claimed</div>
             </div>
             <div class="stat-card">
-                <div class="stat-card-title">Attendance Rate</div>
-                <div class="stat-card-value" id="attendanceRate">0%</div>
-                <div class="stat-card-subtitle">Overall percentage</div>
+                <div class="stat-card-title">🌙 Dinner</div>
+                <div class="stat-card-value" id="dinnerClaimed">0</div>
+                <div class="stat-card-subtitle"><span id="dinnerPercent">0%</span> claimed</div>
             </div>
         </div>
 
-        <!-- Manual Check-in Section -->
+        <!-- Manual Claim Section -->
         <div class="action-section">
-            <h2 class="section-title">Manual Check-in</h2>
-            <form class="action-form" id="manualCheckInForm">
+            <h2 class="section-title">Manual Meal Claim</h2>
+            <form class="action-form" id="manualClaimForm">
                 <input 
                     type="text" 
-                    id="manualTeamId" 
-                    placeholder="Enter Team ID" 
+                    id="manualParticipantId" 
+                    placeholder="Enter Participant ID (e.g., HACK001-M1)" 
                     required
                 >
-                <button type="submit">Check In Team</button>
+                <select id="manualMealType" required>
+                    <option value="">Select Meal</option>
+                    <option value="breakfast">🌅 Breakfast</option>
+                    <option value="lunch">🍽️ Lunch</option>
+                    <option value="dinner">🌙 Dinner</option>
+                </select>
+                <button type="submit">Claim Meal</button>
             </form>
             <div id="manualMessage" class="message"></div>
         </div>
 
-        <!-- Teams List Section -->
+        <!-- Teams Section -->
         <div class="teams-section">
-            <h2 class="section-title">All Teams</h2>
+            <h2 class="section-title">Team-wise Food Tracking</h2>
             
             <!-- Search Bar -->
             <div class="search-bar">
@@ -95,29 +99,12 @@
                 >
             </div>
 
-            <!-- Teams Table -->
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Team ID</th>
-                            <th>Team Name</th>
-                            <th>Members</th>
-                            <th>Status</th>
-                            <th>Check-in Time</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="teamsTableBody">
-                        <tr>
-                            <td colspan="7" class="loading">
-                                <div class="spinner"></div>
-                                Loading teams...
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+            <!-- Teams List -->
+            <div id="teamsContainer" class="teams-container">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading teams...</p>
+                </div>
             </div>
         </div>
     </div>

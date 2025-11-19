@@ -10,8 +10,9 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 import dotenv from "dotenv";
-import checkinRoutes from "./routes/checkin.js";
-import adminRoutes from "./routes/admin.js";
+import foodRoutes from "./routes/food.js";
+import  foodAdminRoutes  from "./routes/foodAdmin.js";
+
 
 // Fix __dirname and __filename (not available in ES modules)
 const __filename = fileURLToPath(import.meta.url);
@@ -173,15 +174,17 @@ app.get("/api", (req, res) => {
     success: true,
     message: "Welcome to the HACK.MCE 5.0 API",
     availableEndpoints: [
-      "/api/checkin",
-      "/api/admin",
+      "/api/food",
+      "/api/foodAdmin",
       "/api/health"
     ]
   });
 });
 
-app.use("/api/checkin", checkinRoutes);
-app.use("/api/admin", adminRoutes);
+app.use("/api/food", foodRoutes);
+app.use("/api/foodAdmin", foodAdminRoutes);
+// Also support /api/food/admin/* paths (frontend expects this)
+app.use("/api/food/admin", foodAdminRoutes);
 
 // Health check endpoint (works without MongoDB connection)
 app.get("/api/health", (req, res) => {

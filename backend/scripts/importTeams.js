@@ -88,9 +88,7 @@ async function importTeamsFromExcel() {
           teamName: (get('Team Name', 'TeamName', 'team_name', 'name', 'Name', 'TEAM NAME') || '')
             .toString().trim(),
 
-          college: (get('College', 'college', 'Institution', 'College Name', 'CollegeName', 'COLLEGE NAME') || 'Malnad College of Engineering')
-            .toString().trim(),
-
+         
           members: [
             get('member1 name', 'Member 1', 'member_1', 'Member1', 'member1'),
             get('member2 name', 'Member 2', 'member_2', 'Member2', 'member2'),
@@ -99,10 +97,7 @@ async function importTeamsFromExcel() {
           ].filter(member => member && member.toString().trim() !== '')
            .map(member => member.toString().trim()),
 
-          contactNumber: (get('Contact', 'contact', 'Phone', 'Mobile', 'Contact Number', 'contactnumber') || '').toString().trim(),
-
-          email: (get('Email', 'email', 'E-mail') || '').toString().trim(),
-
+        
           isCheckedIn: false,
           checkInTime: null
         };

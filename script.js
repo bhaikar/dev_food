@@ -4,187 +4,170 @@ const API_BASE_URL = window.location.hostname === "localhost"
     : "/api";
 
 // DOM Elements
-const checkInForm = document.getElementById('checkInForm');
-const teamIdInput = document.getElementById('teamId');
-const checkInBtn = document.getElementById('checkInBtn');
+const claimForm = document.getElementById('claimForm');
+const participantIdInput = document.getElementById('participantId');
+const claimBtn = document.getElementById('claimBtn');
 const messageBox = document.getElementById('message');
-const checkedInCount = document.getElementById('checkedInCount');
-const totalTeams = document.getElementById('totalTeams');
-const pendingCount = document.getElementById('pendingCount');
-const progress = document.querySelector('.progress-indicator');
+const breakfastCount = document.getElementById('breakfastCount');
+const lunchCount = document.getElementById('lunchCount');
+const dinnerCount = document.getElementById('dinnerCount');
+const recentList = document.getElementById('recentList');
 
-// Load stats on page load
+// Load stats and recent claims on page load
 loadStats();
+loadRecentClaims();
 
 // Form submission
-checkInForm.addEventListener('submit', async (e) => {
+claimForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-
-    const teamId = teamIdInput.value.trim().toUpperCase();
-
-    if (!teamId) {
-        showMessage('Please enter a Team ID', 'error');
+    
+    const participantId = participantIdInput.value.trim().toUpperCase();
+    const mealType = document.querySelector('input[name="mealType"]:checked');
+    
+    if (!participantId) {
+        showMessage('Please enter a Participant ID', 'error');
         return;
     }
 
-    await checkInTeam(teamId);
+    if (!mealType) {
+        showMessage('Please select a meal type', 'error');
+        return;
+    }
+
+    await claimMeal(participantId, mealType.value);
 });
 
-// Check-in team function
-async function checkInTeam(teamId) {
+// Claim meal function
+async function claimMeal(participantId, mealType) {
     try {
         // Show loading state
-        checkInBtn.classList.add('loading');
-        checkInBtn.disabled = true;
+        claimBtn.classList.add('loading');
+        claimBtn.disabled = true;
         messageBox.style.display = 'none';
-        progress.style.width = '30%';
 
-        // API call to check-in
-        const response = await fetch(`${API_BASE_URL}/checkin`, {
+        // API call to claim meal
+        const response = await fetch(`${API_BASE_URL}/food/claim`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ teamId })
+            body: JSON.stringify({ participantId, mealType })
         });
 
-        progress.style.width = '70%';
         const data = await response.json();
 
         // Reset button state
-        checkInBtn.classList.remove('loading');
-        checkInBtn.disabled = false;
-        progress.style.width = '100%';
+        claimBtn.classList.remove('loading');
+        claimBtn.disabled = false;
 
         if (response.ok && data.success) {
             // Success
-            showMessage('Team checked in successfully!', 'success', data.team);
-            teamIdInput.value = '';
-
-            // Animate stats update
-            await loadStats();
-            animateStatUpdate();
-
+            showMessage(data.message, 'success', data.participant);
+            participantIdInput.value = '';
+            
+            // Uncheck radio buttons
+            document.querySelectorAll('input[name="mealType"]').forEach(radio => {
+                radio.checked = false;
+            });
+            
+            loadStats();
+            loadRecentClaims();
+            
             // Auto-clear message after 5 seconds
             setTimeout(() => {
                 messageBox.style.display = 'none';
             }, 5000);
         } else {
             // Error
-            showMessage(data.message || 'Check-in failed. Please try again.', 'error');
+            showMessage(data.message || 'Meal claim failed. Please try again.', 'error');
         }
-
-        // Reset progress bar
-        setTimeout(() => {
-            progress.style.width = '0%';
-        }, 500);
 
     } catch (error) {
         console.error('Error:', error);
-        checkInBtn.classList.remove('loading');
-        checkInBtn.disabled = false;
-        progress.style.width = '0%';
+        claimBtn.classList.remove('loading');
+        claimBtn.disabled = false;
         showMessage('Network error. Please check your connection.', 'error');
     }
 }
 
-// Load statistics with smooth animation
+// Load statistics
 async function loadStats() {
     try {
-        const response = await fetch(`${API_BASE_URL}/admin/stats`);
+        const response = await fetch(`${API_BASE_URL}/food/stats`);
         const data = await response.json();
 
         if (response.ok && data.success) {
-            animateValue(checkedInCount, parseInt(checkedInCount.textContent), data.stats.checkedIn, 500);
-            animateValue(totalTeams, parseInt(totalTeams.textContent), data.stats.total, 500);
-            animateValue(pendingCount, parseInt(pendingCount.textContent), data.stats.pending, 500);
+            breakfastCount.textContent = `${data.stats.breakfast.claimed}/${data.stats.total}`;
+            lunchCount.textContent = `${data.stats.lunch.claimed}/${data.stats.total}`;
+            dinnerCount.textContent = `${data.stats.dinner.claimed}/${data.stats.total}`;
         }
     } catch (error) {
         console.error('Error loading stats:', error);
     }
 }
 
-// Animate number changes
-function animateValue(element, start, end, duration) {
-    if (start === end) return;
+// Load recent claims
+async function loadRecentClaims() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/food/recent?limit=10`);
+        const data = await response.json();
 
-    const range = end - start;
-    const increment = range / (duration / 16);
-    let current = start;
-
-    const timer = setInterval(() => {
-        current += increment;
-        if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) {
-            element.textContent = end;
-            clearInterval(timer);
+        if (response.ok && data.success && data.claims.length > 0) {
+            recentList.innerHTML = data.claims.map(claim => `
+                <div class="recent-item">
+                    <strong>${claim.participantId}</strong> - ${claim.memberName} 
+                    (${claim.teamName}) claimed 
+                    <strong>${claim.mealType.toUpperCase()}</strong> 
+                    at ${new Date(claim.claimedAt).toLocaleTimeString()}
+                </div>
+            `).join('');
         } else {
-            element.textContent = Math.round(current);
+            recentList.innerHTML = '<p class="loading-text">No recent claims yet</p>';
         }
-    }, 16);
-}
-
-// Animate stat cards on update
-function animateStatUpdate() {
-    const statItems = document.querySelectorAll('.stat-item');
-    statItems.forEach((item, index) => {
-        setTimeout(() => {
-            item.style.transform = 'scale(1.1)';
-            setTimeout(() => {
-                item.style.transform = 'scale(1)';
-            }, 200);
-        }, index * 100);
-    });
+    } catch (error) {
+        console.error('Error loading recent claims:', error);
+        recentList.innerHTML = '<p class="loading-text">Error loading claims</p>';
+    }
 }
 
 // Show message function
-function showMessage(text, type, teamData = null) {
+function showMessage(text, type, participantData = null) {
     messageBox.className = `message ${type}`;
-
+    
     let content = `<p>${text}</p>`;
-
-    if (type === 'success' && teamData) {
+    
+    if (type === 'success' && participantData) {
         content += `
-         <div class="team-details">
-             <p><strong>Team ID:</strong> ${teamData.teamId}</p>
-             <p><strong>Team Name:</strong> ${teamData.teamName}</p>
-             <p><strong>Check-in Time:</strong> ${new Date(teamData.checkInTime).toLocaleString()}</p>
-         </div>
-     `;
+            <div class="participant-details">
+                <p><strong>Participant ID:</strong> ${participantData.participantId}</p>
+                <p><strong>Name:</strong> ${participantData.memberName}</p>
+                <p><strong>Team:</strong> ${participantData.teamName}</p>
+                <p><strong>Meal:</strong> ${participantData.mealType.toUpperCase()}</p>
+                <p><strong>Time:</strong> ${new Date(participantData.claimedAt).toLocaleString()}</p>
+            </div>
+        `;
     }
-
+    
     messageBox.innerHTML = content;
     messageBox.style.display = 'block';
-
-    // Animate message appearance
-    messageBox.style.animation = 'none';
-    setTimeout(() => {
-        messageBox.style.animation = 'slideIn 0.4s ease';
-    }, 10);
 }
 
 // Auto-refresh stats every 10 seconds
 setInterval(loadStats, 10000);
 
+// Auto-refresh recent claims every 15 seconds
+setInterval(loadRecentClaims, 15000);
+
 // Focus on input field on page load
 window.addEventListener('load', () => {
-    teamIdInput.focus();
+    participantIdInput.focus();
 });
 
-// Input auto-format to uppercase
-teamIdInput.addEventListener('input', (e) => {
-    e.target.value = e.target.value.toUpperCase();
-});
-
-// Allow Enter key to submit from anywhere
+// Allow Enter key to focus on input
 document.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter' && document.activeElement !== teamIdInput) {
-        teamIdInput.focus();
+    if (e.key === 'Enter' && document.activeElement !== participantIdInput) {
+        participantIdInput.focus();
     }
-});
-
-// Add smooth transition to stat items
-document.querySelectorAll('.stat-item').forEach(item => {
-    item.style.transition = 'transform 0.2s ease';
 });
 
 
